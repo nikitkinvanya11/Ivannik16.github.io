@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>🍽 Калькулятор калорий по фото</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+        }
+        h1 {
+            font-size: 2.4rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+
+        .upload-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .upload-area {
+            border: 2px dashed #bdc3c7;
+            border-radius: 12px;
+            padding: 40px 20px;
+            margin: 20px 0;
+            transition: border-color 0.3s;
+        }
+        .upload-area:hover {
+            border-color: #3498db;
+        }
+        input[type="file"] {
+            margin: 15px 0;
+            font-size: 1rem;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+
+        .result-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            margin-top: 20px;
+        }
+        .calories-total {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .calories-value {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #e74c3c;
+            line-height: 1;
+        }
+        .calories-label {
+            font-size: 1.3rem;
+            color: #2c3e50;
+            margin-top: 8px;
+        }
+
+        .detected-items {
+            margin: 25px 0;
+        }
+        .item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .item:last-child {
+            border-bottom: none;
+        }
+        .item-name {
+            font-weight: 600;
+            color: #2c3e50;
+            text-transform: capitalize;
+        }
+        .item-calories {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .confidence {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+        }
+
+        .output-image {
+            margin-top: 25px;
+            text-align: center;
+        }
+        .output-image img {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .error {
+            color: #e74c3c;
+            background: #fdf2f2;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #95a5a6;
+            font-size: 0.9rem;
+        }
+
+@media (max-width: 600px) {
+            .calories-value {
+                font-size: 3rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🍽 Калькулятор калорий по фото</h1>
+            <p class="subtitle">Сфотографируйте еду — и узнайте, сколько в ней калорий!</p>
+        </header>
+
+        <div class="upload-card">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="upload-area">
+                    <p>📷 Выберите фото с едой (JPG или PNG)</p>
+                    <input type="file" name="file" accept="image/*" required />
+                    <br />
+                    <button type="submit" class="btn">Рассчитать калории</button>
+                </div>
+            </form>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="error">
+                        {% for msg in messages %}
+                            {{ msg }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        {% if result %}
+        <div class="result-card">
+            <div class="calories-total">
+                <div class="calories-value">{{ result.total_calories }}</div>
+                <div class="calories-label">ккал всего</div>
+            </div>
+
+            {% if result.items %}
+                <h3>Обнаруженные продукты:</h3>
+                <div class="detected-items">
+                    {% for item in result["items"] %}
+                    <div class="item">
+                        <span class="item-name">{{ item.name }}</span>
+                        <div>
+                            <span class="item-calories">{{ item.calories }} ккал</span>
+                            <div class="confidence">уверенность: {{ item.confidence }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p style="text-align: center; color: #7f8c8d;">Ни один съедобный продукт не обнаружен 😕</p>
+            {% endif %}
+
+            <div class="output-image">
+                <h3>Анализ изображения:</h3>
+                <img src="{{ url_for('static', filename=result.output_image) }}" alt="Результат с разметкой">
+            </div>
+        </div>
+        {% endif %}
+
+        <footer>
+            <p>На основе YOLOv8 • Оценка для стандартной порции (100 г)</p>
+        </footer>
+    </div>
+    <!-- DEBUG: покажем, что получил шаблон -->
+{% if result is defined %}
+  <div style="margin-top: 30px; padding: 15px; background: #e8f4ff; border-left: 4px solid #2196f3;">
+    <strong>DEBUG:</strong> result = {{ result }}
+  </div>
+{% else %}
+  <div style="margin-top: 30px; padding: 15px; background: #ffe8e8; border-left: 4px solid #f44336;">
+    <strong>DEBUG:</strong> result НЕ передан
+  </div>
+{% endif %}
+</body>
+</html>
